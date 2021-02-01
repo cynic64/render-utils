@@ -7,10 +7,10 @@
 
 #include <vulkan/vulkan.h>
 
-#include "external/render-c/buffer.h"
-#include "external/render-c/cbuf.h"
-#include "external/render-c/image.h"
-#include "external/render-c/set.h"
+#include "../external/render-c/src/buffer.h"
+#include "../external/render-c/src/cbuf.h"
+#include "../external/render-c/src/image.h"
+#include "../external/render-c/src/set.h"
 
 #include <stdint.h>
 
