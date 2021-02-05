@@ -1,9 +1,7 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
-#include <cglm/cglm.h>
-
-#include <math.h>
+#include "../external/cglm/include/cglm/cglm.h"
 
 const float CAMERA_FOV = 1.5F;
 const float CAMERA_NEAR = 0.1F;
