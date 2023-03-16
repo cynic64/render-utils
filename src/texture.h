@@ -7,12 +7,13 @@
 
 #include <vulkan/vulkan.h>
 
-#include "../external/render-c/src/buffer.h"
-#include "../external/render-c/src/cbuf.h"
-#include "../external/render-c/src/image.h"
-#include "../external/render-c/src/set.h"
+#include "external/render-c/src/buffer.h"
+#include "external/render-c/src/cbuf.h"
+#include "external/render-c/src/image.h"
+#include "external/render-c/src/set.h"
 
 #include <stdint.h>
+#include <vulkan/vulkan_core.h>
 
 const VkFormat TEXTURE_FORMAT = VK_FORMAT_B8G8R8A8_SRGB;
 
@@ -76,8 +77,8 @@ void texture_generate_mipmaps(VkDevice device, VkQueue queue, VkCommandPool cpoo
 // Creates mipmaps too.
 void texture_set_from_path(VkPhysicalDevice phys_dev, VkDevice device, VkQueue queue,
                            VkCommandPool cpool, VkDescriptorPool dpool, VkSampler sampler,
-                           VkDescriptorSetLayout layout, const char* path,
-                           struct Image* texture, VkDescriptorSet* set)
+                           const char* path, struct Image* texture,
+			   VkDescriptorSetLayout set_layout, VkDescriptorSet* set)
 {
         int width, height, channels;
 	stbi_uc* pixels = stbi_load(path, &width, &height, &channels, STBI_rgb_alpha);
@@ -107,7 +108,7 @@ void texture_set_from_path(VkPhysicalDevice phys_dev, VkDevice device, VkQueue q
 	stbi_image_free(pixels);
 
 	// Create texture
-	image_create(phys_dev, device, VK_FORMAT_R8G8B8A8_SRGB, width, height,
+	image_create(phys_dev, device, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TYPE_2D, width, height, 1,
 	             VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                      VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 		     VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT, mip_levels, VK_SAMPLE_COUNT_1_BIT, texture);
@@ -119,21 +120,25 @@ void texture_set_from_path(VkPhysicalDevice phys_dev, VkDevice device, VkQueue q
 	            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, mip_levels);
 
 	image_copy_from_buffer(device, queue, cpool, VK_IMAGE_ASPECT_COLOR_BIT,
-	                       tex_buf.handle, texture->handle, width, height);
+	                       tex_buf.handle, texture->handle, width, height, 1);
 
 	texture_generate_mipmaps(device, queue, cpool, texture->handle, width, height, mip_levels);
 
 	buffer_destroy(device, &tex_buf);
 
 	// Create set
-        struct Descriptor desc_tex = {0};
-        desc_tex.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        desc_tex.binding = 0;
-        desc_tex.shader_stage_flags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        desc_tex.image.sampler = sampler;
-        desc_tex.image.imageView = texture->view;
-        desc_tex.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        set_create(device, dpool, layout, 1, &desc_tex, set);
+        struct DescriptorInfo tex_desc = {0};
+        tex_desc.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        tex_desc.shader_stage_flags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        tex_desc.image.sampler = sampler;
+        tex_desc.image.imageView = texture->view;
+        tex_desc.image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	struct SetInfo set_info = {0};
+	set_info.desc_ct = 1;
+	set_info.descs = &tex_desc;
+	
+        set_create(device, dpool, set_layout, &set_info, set);
 }
 
 #endif // TEXTURE_H
